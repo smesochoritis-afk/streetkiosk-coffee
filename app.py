@@ -9,6 +9,7 @@ TARGET = 5
 customers = {
     "demo": {"name": "Demo Customer", "stamps": 0}
 }
+
 CUSTOMER_HTML = """
 <!DOCTYPE html>
 <html lang="el">
@@ -16,6 +17,7 @@ CUSTOMER_HTML = """
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Κάρτα Πελάτη</title>
+
 <style>
 body{
     font-family: Arial;
@@ -38,7 +40,7 @@ body{
 
 .title{
     font-size:26px;
-        font-weight:bold;
+    font-weight:bold;
     margin-bottom:8px;
 }
 
@@ -49,7 +51,7 @@ body{
 
 .stamps{
     display:grid;
-        grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(3,1fr);
     gap:15px;
     margin-top:20px;
     justify-items:center;
@@ -59,7 +61,7 @@ body{
     width:70px;
     height:70px;
     border-radius:50%;
-        border:3px solid #333;
+    border:3px solid #333;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -69,7 +71,7 @@ body{
 
 .filled{
     background:#222;
-        color:white;
+    color:white;
 }
 
 .reward{
@@ -81,6 +83,7 @@ body{
     margin-top:18px;
     font-weight:bold;
 }
+
 .qrbox{
     margin-top:18px;
 }
@@ -103,6 +106,7 @@ body{
 
 <div class="title">☕ STREETKIOSK</div>
 <div class="name">{{ customer["name"] }}</div>
+
 <div class="stamps">
 
 <div class="stamp {% if stamps >= 1 %}filled{% endif %}">
@@ -116,6 +120,7 @@ body{
 <div class="stamp {% if stamps >= 3 %}filled{% endif %}">
 {% if stamps >= 3 %}✔{% else %}3{% endif %}
 </div>
+
 <div class="stamp {% if stamps >= 4 %}filled{% endif %}">
 {% if stamps >= 4 %}✔{% else %}4{% endif %}
 </div>
@@ -127,6 +132,7 @@ body{
 <div class="stamp reward">🎁</div>
 
 </div>
+
 <div class="info">
 {% if stamps >= target %}
 Έχεις δωρεάν καφέ! 🎉
@@ -134,10 +140,12 @@ body{
 Έχεις {{ stamps }}/{{ target }} σφραγίδες
 {% endif %}
 </div>
+
 <div class="qrbox">
 <p>Το QR του πελάτη</p>
 <img src="/qr/{{ customer_id }}" width="180">
 </div>
+
 <a class="btn" href="/cashier/{{ customer_id }}">Ταμείο</a>
 
 </div>
@@ -145,10 +153,12 @@ body{
 </body>
 </html>
 """
+
 @app.route("/")
 def home():
     return redirect(url_for("customer_card", customer_id="demo"))
-  @app.route("/customer/<customer_id>")
+
+@app.route("/customer/<customer_id>")
 def customer_card(customer_id):
 
     customer = customers.get(customer_id)
@@ -163,7 +173,8 @@ def customer_card(customer_id):
         stamps=customer["stamps"],
         target=TARGET
     )
-  @app.route("/cashier/<customer_id>")
+
+@app.route("/cashier/<customer_id>")
 def cashier(customer_id):
 
     customer = customers.get(customer_id)
@@ -183,7 +194,8 @@ def cashier(customer_id):
 
     <a href="/customer/{customer_id}">Πίσω στην κάρτα</a>
     """
-  @app.route("/add/<customer_id>/<int:amount>")
+
+@app.route("/add/<customer_id>/<int:amount>")
 def add_stamps(customer_id, amount):
 
     customer = customers.get(customer_id)
@@ -197,18 +209,19 @@ def add_stamps(customer_id, amount):
         customer["stamps"] = TARGET
 
     return redirect(url_for("cashier", customer_id=customer_id))
-  @app.route("/add/<customer_id>/<int:amount>")
-def add_stamps(customer_id, amount):
 
-    customer = customers.get(customer_id)
+@app.route("/qr/<customer_id>")
+def qr(customer_id):
 
-    if not customer:
-        return "Ο πελάτης δεν βρέθηκε"
+    url = f"https://streetkiosk-coffee.onrender.com/cashier/{customer_id}"
 
-    customer["stamps"] += amount
+    img = qrcode.make(url)
 
-    if customer["stamps"] > TARGET:
-        customer["stamps"] = TARGET
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
 
-    return redirect(url_for("cashier", customer_id=customer_id))
-  
+    return send_file(buf, mimetype="image/png")
+
+if __name__ == "__main__":
+    app.run(debug=True)
