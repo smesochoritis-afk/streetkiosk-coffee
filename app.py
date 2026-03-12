@@ -15,62 +15,62 @@ HOME_HTML = """
 <style>
 
 body{
-font-family: Arial, sans-serif;
-background:#f4f4f4;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
-margin:0;
+    font-family: Arial, sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
 }
 
 .card{
-background:white;
-padding:30px;
-border-radius:16px;
-box-shadow:0 5px 20px rgba(0,0,0,0.15);
-width:320px;
-text-align:center;
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    width:320px;
+    text-align:center;
 }
 
 .title{
-font-size:26px;
-font-weight:bold;
-margin-bottom:10px;
+    font-size:26px;
+    font-weight:bold;
+    margin-bottom:10px;
 }
 
 .stamps{
-display:grid;
-grid-template-columns:repeat(3,1fr);
-gap:15px;
-margin-top:20px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+    margin-top:20px;
 }
 
 .stamp{
-width:70px;
-height:70px;
-border-radius:50%;
-border:3px solid #333;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:22px;
-margin:auto;
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    border:3px solid #333;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    margin:auto;
 }
 
 .reward{
-background:gold;
-border:3px solid #caa400;
+    background:gold;
+    border:3px solid #caa400;
 }
 
 .linkbtn{
-display:inline-block;
-margin-top:20px;
-background:#222;
-color:white;
-text-decoration:none;
-padding:10px 14px;
-border-radius:10px;
+    display:inline-block;
+    margin-top:20px;
+    background:#222;
+    color:white;
+    text-decoration:none;
+    padding:10px 14px;
+    border-radius:10px;
 }
 
 </style>
@@ -84,14 +84,12 @@ border-radius:10px;
 <p>Κάρτα Καφέ</p>
 
 <div class="stamps">
-
 <div class="stamp">1</div>
 <div class="stamp">2</div>
 <div class="stamp">3</div>
 <div class="stamp">4</div>
 <div class="stamp">5</div>
 <div class="stamp reward">🎁</div>
-
 </div>
 
 <a class="linkbtn" href="/cashier">Ταμείο</a>
@@ -113,56 +111,55 @@ CASHIER_HTML = """
 <style>
 
 body{
-font-family: Arial, sans-serif;
-background:#f4f4f4;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
-margin:0;
+    font-family: Arial, sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
 }
 
 .panel{
-background:white;
-padding:30px;
-border-radius:16px;
-box-shadow:0 5px 20px rgba(0,0,0,0.15);
-width:340px;
-text-align:center;
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    width:340px;
+    text-align:center;
 }
 
 .title{
-font-size:26px;
-font-weight:bold;
-margin-bottom:10px;
+    font-size:26px;
+    font-weight:bold;
+    margin-bottom:10px;
 }
 
 .btn{
-background:#222;
-color:white;
-border:none;
-padding:14px 18px;
-border-radius:12px;
-font-size:18px;
-cursor:pointer;
-width:100%;
-margin-top:20px;
+    background:#222;
+    color:white;
+    border:none;
+    padding:14px 18px;
+    border-radius:12px;
+    font-size:18px;
+    cursor:pointer;
+    width:100%;
+    margin-top:20px;
 }
 
 .qrbox{
-margin-top:20px;
-padding:25px;
-border:2px dashed #bbb;
-border-radius:14px;
-color:#666;
-background:#fafafa;
+    margin-top:20px;
+    padding:25px;
+    border:2px dashed #bbb;
+    border-radius:14px;
+    background:#fafafa;
 }
 
 .back{
-display:inline-block;
-margin-top:20px;
-text-decoration:none;
-color:#222;
+    display:inline-block;
+    margin-top:20px;
+    text-decoration:none;
+    color:#222;
 }
 
 </style>
@@ -196,9 +193,9 @@ def home():
 @app.route("/cashier")
 def cashier():
     return render_template_string(CASHIER_HTML)
-    @app.route("/qr")
-def qr():
 
+@app.route("/qr")
+def qr():
     url = "https://streetkiosk-coffee.onrender.com"
 
     img = qrcode.make(url)
