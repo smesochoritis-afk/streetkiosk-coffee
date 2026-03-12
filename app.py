@@ -1,4 +1,6 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, send_file
+import qrcode
+import io
 
 app = Flask(__name__)
 
@@ -194,6 +196,18 @@ def home():
 @app.route("/cashier")
 def cashier():
     return render_template_string(CASHIER_HTML)
+    @app.route("/qr")
+def qr():
+
+    url = "https://streetkiosk-coffee.onrender.com"
+
+    img = qrcode.make(url)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return send_file(buf, mimetype="image/png")
 
 if __name__ == "__main__":
     app.run(debug=True)
