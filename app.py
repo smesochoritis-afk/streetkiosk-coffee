@@ -178,7 +178,7 @@ color:#222;
 <button class="btn">Νέα αγορά καφέ</button>
 
 <div class="qrbox">
-Εδώ θα εμφανίζεται το QR
+<img src="/qr" width="180">
 </div>
 
 <a class="back" href="/">Επιστροφή</a>
