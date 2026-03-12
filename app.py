@@ -4,6 +4,10 @@ import io
 
 app = Flask(__name__)
 
+stamps = 0
+TARGET = 5
+
+
 HOME_HTML = """
 <!DOCTYPE html>
 <html lang="el">
@@ -15,7 +19,7 @@ HOME_HTML = """
 <style>
 
 body{
-    font-family: Arial, sans-serif;
+    font-family: Arial;
     background:#f4f4f4;
     display:flex;
     justify-content:center;
@@ -36,7 +40,6 @@ body{
 .title{
     font-size:26px;
     font-weight:bold;
-    margin-bottom:10px;
 }
 
 .stamps{
@@ -55,7 +58,11 @@ body{
     align-items:center;
     justify-content:center;
     font-size:22px;
-    margin:auto;
+}
+
+.filled{
+    background:#222;
+    color:white;
 }
 
 .reward{
@@ -63,13 +70,13 @@ body{
     border:3px solid #caa400;
 }
 
-.linkbtn{
+.btn{
     display:inline-block;
     margin-top:20px;
+    padding:10px 14px;
     background:#222;
     color:white;
     text-decoration:none;
-    padding:10px 14px;
     border-radius:10px;
 }
 
@@ -84,15 +91,40 @@ body{
 <p>Κάρτα Καφέ</p>
 
 <div class="stamps">
-<div class="stamp">1</div>
-<div class="stamp">2</div>
-<div class="stamp">3</div>
-<div class="stamp">4</div>
-<div class="stamp">5</div>
-<div class="stamp reward">🎁</div>
+
+<div class="stamp {% if stamps >= 1 %}filled{% endif %}">
+{% if stamps >= 1 %}✔{% else %}1{% endif %}
 </div>
 
-<a class="linkbtn" href="/cashier">Ταμείο</a>
+<div class="stamp {% if stamps >= 2 %}filled{% endif %}">
+{% if stamps >= 2 %}✔{% else %}2{% endif %}
+</div>
+
+<div class="stamp {% if stamps >= 3 %}filled{% endif %}">
+{% if stamps >= 3 %}✔{% else %}3{% endif %}
+</div>
+
+<div class="stamp {% if stamps >= 4 %}filled{% endif %}">
+{% if stamps >= 4 %}✔{% else %}4{% endif %}
+</div>
+
+<div class="stamp {% if stamps >= 5 %}filled{% endif %}">
+{% if stamps >= 5 %}✔{% else %}5{% endif %}
+</div>
+
+<div class="stamp reward">🎁</div>
+
+</div>
+
+<p>
+{% if stamps >= target %}
+Έχεις δωρεάν καφέ 🎉
+{% else %}
+Έχεις {{ stamps }}/{{ target }} σφραγίδες
+{% endif %}
+</p>
+
+<a class="btn" href="/cashier">Ταμείο</a>
 
 </div>
 
@@ -100,66 +132,37 @@ body{
 </html>
 """
 
+
 CASHIER_HTML = """
 <!DOCTYPE html>
 <html lang="el">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StreetKiosk Cashier</title>
+<title>Cashier</title>
 
 <style>
 
 body{
-    font-family: Arial, sans-serif;
-    background:#f4f4f4;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:100vh;
-    margin:0;
+font-family:Arial;
+background:#f4f4f4;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
 }
 
 .panel{
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 5px 20px rgba(0,0,0,0.15);
-    width:340px;
-    text-align:center;
+background:white;
+padding:30px;
+border-radius:16px;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+width:340px;
+text-align:center;
 }
 
-.title{
-    font-size:26px;
-    font-weight:bold;
-    margin-bottom:10px;
-}
-
-.btn{
-    background:#222;
-    color:white;
-    border:none;
-    padding:14px 18px;
-    border-radius:12px;
-    font-size:18px;
-    cursor:pointer;
-    width:100%;
-    margin-top:20px;
-}
-
-.qrbox{
-    margin-top:20px;
-    padding:25px;
-    border:2px dashed #bbb;
-    border-radius:14px;
-    background:#fafafa;
-}
-
-.back{
-    display:inline-block;
-    margin-top:20px;
-    text-decoration:none;
-    color:#222;
+.qr{
+margin-top:20px;
 }
 
 </style>
@@ -169,16 +172,16 @@ body{
 
 <div class="panel">
 
-<div class="title">☕ STREETKIOSK</div>
+<h2>☕ STREETKIOSK</h2>
 <p>Ταμείο</p>
 
-<button class="btn">Νέα αγορά καφέ</button>
-
-<div class="qrbox">
+<div class="qr">
 <img src="/qr" width="180">
 </div>
 
-<a class="back" href="/">Επιστροφή</a>
+<br>
+
+<a href="/">Επιστροφή</a>
 
 </div>
 
@@ -186,17 +189,78 @@ body{
 </html>
 """
 
+
+RESULT_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>Scan</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f4f4;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.box{
+background:white;
+padding:30px;
+border-radius:16px;
+box-shadow:0 5px 20px rgba(0,0,0,0.15);
+text-align:center;
+}
+
+.btn{
+display:inline-block;
+margin-top:20px;
+padding:10px 14px;
+background:#222;
+color:white;
+text-decoration:none;
+border-radius:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>{{ message }}</h2>
+<p>{{ stamps }}/{{ target }} σφραγίδες</p>
+
+<a class="btn" href="/">Πίσω στην κάρτα</a>
+
+</div>
+
+</body>
+</html>
+"""
+
+
 @app.route("/")
 def home():
-    return render_template_string(HOME_HTML)
+    global stamps
+    return render_template_string(HOME_HTML, stamps=stamps, target=TARGET)
+
 
 @app.route("/cashier")
 def cashier():
     return render_template_string(CASHIER_HTML)
 
+
 @app.route("/qr")
 def qr():
-    url = "https://streetkiosk-coffee.onrender.com"
+
+    url = "https://streetkiosk-coffee.onrender.com/scan"
 
     img = qrcode.make(url)
 
@@ -205,6 +269,28 @@ def qr():
     buf.seek(0)
 
     return send_file(buf, mimetype="image/png")
+
+
+@app.route("/scan")
+def scan():
+
+    global stamps
+
+    if stamps < TARGET:
+        stamps += 1
+
+    if stamps >= TARGET:
+        message = "Δωρεάν καφές!"
+    else:
+        message = "Προστέθηκε 1 καφές ☕"
+
+    return render_template_string(
+        RESULT_HTML,
+        message=message,
+        stamps=stamps,
+        target=TARGET
+    )
+
 
 if __name__ == "__main__":
     app.run(debug=True)
