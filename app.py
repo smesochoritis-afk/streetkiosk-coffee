@@ -1,10 +1,12 @@
 from flask import Flask, render_template_string, send_file, redirect, url_for, request
 import qrcode
 import io
+from datetime import datetime
 
 app = Flask(__name__)
 
 TARGET = 5
+ADMIN_PIN = "2580"
 
 customers = {}
 next_customer_id = 1
@@ -30,7 +32,7 @@ REGISTER_HTML = """
         }
         .card{
             background:white;
-            width:360px;
+            width:380px;
             padding:30px;
             border-radius:16px;
             box-shadow:0 5px 20px rgba(0,0,0,0.15);
@@ -79,6 +81,10 @@ REGISTER_HTML = """
             color:#222;
             font-weight:bold;
         }
+        .small{
+            font-size:13px;
+            color:#777;
+        }
     </style>
 </head>
 <body>
@@ -99,7 +105,7 @@ REGISTER_HTML = """
                 {% for cid, customer in customers.items() %}
                     <div class="customer-item">
                         <a href="/customer/{{ cid }}">{{ customer["name"] }}</a><br>
-                        {{ customer["phone"] }}
+                        <span class="small">{{ customer["phone"] }} | {{ customer["stamps"] }}/{{ target }} σφραγίδες</span>
                     </div>
                 {% endfor %}
             {% else %}
@@ -134,7 +140,7 @@ CUSTOMER_HTML = """
             padding:30px;
             border-radius:16px;
             box-shadow:0 5px 20px rgba(0,0,0,0.15);
-            width:340px;
+            width:360px;
             text-align:center;
         }
         .title{
@@ -203,6 +209,25 @@ CUSTOMER_HTML = """
             text-decoration:none;
             border-radius:10px;
         }
+        .history{
+            margin-top:20px;
+            text-align:left;
+            background:#fafafa;
+            padding:12px;
+            border-radius:12px;
+        }
+        .history h3{
+            margin-top:0;
+            font-size:16px;
+        }
+        .history-item{
+            font-size:14px;
+            padding:6px 0;
+            border-bottom:1px solid #eee;
+        }
+        .history-item:last-child{
+            border-bottom:none;
+        }
     </style>
 </head>
 <body>
@@ -235,6 +260,90 @@ CUSTOMER_HTML = """
 
         <a class="btn" href="/cashier/{{ customer_id }}">Ταμείο</a><br>
         <a class="btn2" href="/">Πίσω στην εγγραφή</a>
+
+        <div class="history">
+            <h3>Ιστορικό</h3>
+            {% if customer["history"] %}
+                {% for item in customer["history"]|reverse %}
+                    <div class="history-item">
+                        {{ item["action"] }} | {{ item["date"] }} | {{ item["time"] }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="history-item">Δεν υπάρχει ιστορικό ακόμα.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+PIN_HTML = """
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin PIN</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background:#f4f4f4;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            min-height:100vh;
+            margin:0;
+            padding:20px;
+        }
+        .box{
+            background:white;
+            width:340px;
+            padding:30px;
+            border-radius:16px;
+            box-shadow:0 5px 20px rgba(0,0,0,0.15);
+            text-align:center;
+        }
+        input{
+            width:100%;
+            box-sizing:border-box;
+            padding:12px;
+            margin-top:12px;
+            border:1px solid #ccc;
+            border-radius:10px;
+            font-size:18px;
+            text-align:center;
+        }
+        button{
+            width:100%;
+            padding:14px;
+            margin-top:12px;
+            border:none;
+            border-radius:10px;
+            background:#222;
+            color:white;
+            font-size:17px;
+            cursor:pointer;
+        }
+        .error{
+            color:#b00020;
+            margin-top:10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Κωδικός Ταμείου</h2>
+        <p>Βάλε τον admin PIN για να ανοίξει το ταμείο</p>
+
+        <form method="post">
+            <input type="password" name="pin" placeholder="PIN" required>
+            <button type="submit">Είσοδος</button>
+        </form>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
     </div>
 </body>
 </html>
@@ -320,18 +429,22 @@ CASHIER_HTML = """
 
         <div class="row">
             <form method="post" action="/add/{{ customer_id }}/1">
+                <input type="hidden" name="pin" value="{{ pin }}">
                 <button class="btn dark" type="submit">+1</button>
             </form>
             <form method="post" action="/add/{{ customer_id }}/2">
+                <input type="hidden" name="pin" value="{{ pin }}">
                 <button class="btn dark" type="submit">+2</button>
             </form>
             <form method="post" action="/add/{{ customer_id }}/3">
+                <input type="hidden" name="pin" value="{{ pin }}">
                 <button class="btn dark" type="submit">+3</button>
             </form>
         </div>
 
         <div class="row">
             <form method="post" action="/redeem/{{ customer_id }}">
+                <input type="hidden" name="pin" value="{{ pin }}">
                 <button class="btn gold" type="submit">Εξαργύρωση Δώρου</button>
             </form>
         </div>
@@ -347,7 +460,7 @@ RESULT_HTML = """
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="1.5;url=/cashier/{{ customer_id }}">
+    <meta http-equiv="refresh" content="1.5;url=/cashier/{{ customer_id }}?pin={{ pin }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Αποτέλεσμα</title>
     <style>
@@ -381,7 +494,7 @@ RESULT_HTML = """
 
 @app.route("/")
 def home():
-    return render_template_string(REGISTER_HTML, customers=customers)
+    return render_template_string(REGISTER_HTML, customers=customers, target=TARGET)
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -401,7 +514,8 @@ def register():
         "name": name,
         "phone": phone,
         "email": email,
-        "stamps": 0
+        "stamps": 0,
+        "history": []
     }
 
     return redirect(url_for("customer_card", customer_id=customer_id))
@@ -420,18 +534,24 @@ def customer_card(customer_id):
         target=TARGET
     )
 
-@app.route("/cashier/<customer_id>")
+@app.route("/cashier/<customer_id>", methods=["GET", "POST"])
 def cashier(customer_id):
     customer = customers.get(customer_id)
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
+
+    pin = request.values.get("pin", "")
+
+    if pin != ADMIN_PIN:
+        return render_template_string(PIN_HTML, error="Λάθος PIN")
 
     return render_template_string(
         CASHIER_HTML,
         customer=customer,
         customer_id=customer_id,
         stamps=customer["stamps"],
-        target=TARGET
+        target=TARGET,
+        pin=pin
     )
 
 @app.route("/add/<customer_id>/<int:amount>", methods=["POST"])
@@ -440,9 +560,20 @@ def add_stamps(customer_id, amount):
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
 
+    pin = request.form.get("pin", "")
+    if pin != ADMIN_PIN:
+        return "Μη εξουσιοδοτημένη πρόσβαση", 403
+
     customer["stamps"] += amount
     if customer["stamps"] > TARGET:
         customer["stamps"] = TARGET
+
+    now = datetime.now()
+    customer["history"].append({
+        "action": f"+{amount} καφές" if amount == 1 else f"+{amount} καφέδες",
+        "date": now.strftime("%d-%m-%Y"),
+        "time": now.strftime("%H:%M")
+    })
 
     if customer["stamps"] >= TARGET:
         message = "Έφτασε δώρο 🎁"
@@ -454,7 +585,8 @@ def add_stamps(customer_id, amount):
         message=message,
         stamps=customer["stamps"],
         target=TARGET,
-        customer_id=customer_id
+        customer_id=customer_id,
+        pin=pin
     )
 
 @app.route("/redeem/<customer_id>", methods=["POST"])
@@ -463,10 +595,21 @@ def redeem(customer_id):
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
 
+    pin = request.form.get("pin", "")
+    if pin != ADMIN_PIN:
+        return "Μη εξουσιοδοτημένη πρόσβαση", 403
+
+    now = datetime.now()
+
     if customer["stamps"] < TARGET:
         message = "Δεν υπάρχει ακόμα δώρο"
     else:
         customer["stamps"] = 0
+        customer["history"].append({
+            "action": "Εξαργύρωση δώρου",
+            "date": now.strftime("%d-%m-%Y"),
+            "time": now.strftime("%H:%M")
+        })
         message = "Το δώρο εξαργυρώθηκε ✅"
 
     return render_template_string(
@@ -474,7 +617,8 @@ def redeem(customer_id):
         message=message,
         stamps=customer["stamps"],
         target=TARGET,
-        customer_id=customer_id
+        customer_id=customer_id,
+        pin=pin
     )
 
 @app.route("/qr/<customer_id>")
