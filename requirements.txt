@@ -1,7 +1,4 @@
-flask
-gunicorn
-qrcode
-pillow
+
 flask
 gunicorn
 qrcode
