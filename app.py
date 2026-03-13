@@ -350,17 +350,6 @@ PIN_HTML = """
 """
 
 CASHIER_HTML = """
-<div class="row">
-
-<form method="post" action="/delete/{{ customer_id }}">
-<input type="hidden" name="pin" value="{{ pin }}">
-<button class="btn" style="background:#b00020;color:white;">
-Διαγραφή Πελάτη
-</button>
-
-</form>
-
-</div>
 <!DOCTYPE html>
 <html lang="el">
 <head>
@@ -424,6 +413,10 @@ CASHIER_HTML = """
             background:gold;
             color:#222;
         }
+        .red{
+            background:#b00020;
+            color:white;
+        }
         .back{
             display:inline-block;
             margin-top:18px;
@@ -457,6 +450,13 @@ CASHIER_HTML = """
             <form method="post" action="/redeem/{{ customer_id }}">
                 <input type="hidden" name="pin" value="{{ pin }}">
                 <button class="btn gold" type="submit">Εξαργύρωση Δώρου</button>
+            </form>
+        </div>
+
+        <div class="row">
+            <form method="post" action="/delete/{{ customer_id }}">
+                <input type="hidden" name="pin" value="{{ pin }}">
+                <button class="btn red" type="submit">Διαγραφή Πελάτη</button>
             </form>
         </div>
 
@@ -517,18 +517,6 @@ def register():
 
     if not name or not phone:
         return redirect(url_for("home"))
-        @app.route("/delete/<customer_id>", methods=["POST"])
-def delete_customer(customer_id):
-
-    pin = request.form.get("pin","")
-
-    if pin != ADMIN_PIN:
-        return "Μη εξουσιοδοτημένη πρόσβαση"
-
-    if customer_id in customers:
-        del customers[customer_id]
-
-    return redirect(url_for("home"))
 
     customer_id = str(next_customer_id)
     next_customer_id += 1
@@ -644,6 +632,18 @@ def redeem(customer_id):
         pin=pin
     )
 
+@app.route("/delete/<customer_id>", methods=["POST"])
+def delete_customer(customer_id):
+    pin = request.form.get("pin", "")
+
+    if pin != ADMIN_PIN:
+        return "Μη εξουσιοδοτημένη πρόσβαση", 403
+
+    if customer_id in customers:
+        del customers[customer_id]
+
+    return redirect(url_for("home"))
+
 @app.route("/qr/<customer_id>")
 def qr(customer_id):
     customer = customers.get(customer_id)
@@ -661,3 +661,4 @@ def qr(customer_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
