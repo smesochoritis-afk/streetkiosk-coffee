@@ -506,6 +506,18 @@ def register():
 
     if not name or not phone:
         return redirect(url_for("home"))
+        @app.route("/delete/<customer_id>", methods=["POST"])
+def delete_customer(customer_id):
+
+    pin = request.form.get("pin","")
+
+    if pin != ADMIN_PIN:
+        return "Μη εξουσιοδοτημένη πρόσβαση"
+
+    if customer_id in customers:
+        del customers[customer_id]
+
+    return redirect(url_for("home"))
 
     customer_id = str(next_customer_id)
     next_customer_id += 1
