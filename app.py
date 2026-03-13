@@ -350,6 +350,17 @@ PIN_HTML = """
 """
 
 CASHIER_HTML = """
+<div class="row">
+
+<form method="post" action="/delete/{{ customer_id }}">
+<input type="hidden" name="pin" value="{{ pin }}">
+<button class="btn" style="background:#b00020;color:white;">
+Διαγραφή Πελάτη
+</button>
+
+</form>
+
+</div>
 <!DOCTYPE html>
 <html lang="el">
 <head>
