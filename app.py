@@ -194,7 +194,6 @@ def cashier(customer_id):
 
     <a href="/customer/{customer_id}">Πίσω στην κάρτα</a>
     """
-
 @app.route("/add/<customer_id>/<int:amount>")
 def add_stamps(customer_id, amount):
 
@@ -203,10 +202,14 @@ def add_stamps(customer_id, amount):
     if not customer:
         return "Ο πελάτης δεν βρέθηκε"
 
-    customer["stamps"] += amount
+    new_total = customer["stamps"] + amount
 
-    if customer["stamps"] > TARGET:
-        customer["stamps"] = TARGET
+    if customer["stamps"] >= TARGET:
+        customer["stamps"] = 0
+    elif new_total > TARGET:
+        customer["stamps"] = 0
+    else:
+        customer["stamps"] = new_total
 
     return redirect(url_for("cashier", customer_id=customer_id))
 
