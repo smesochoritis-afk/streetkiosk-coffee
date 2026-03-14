@@ -3,12 +3,13 @@ import qrcode
 import io
 import sqlite3
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
 TARGET = 5
-ADMIN_PIN = "2580"
-DELETE_PASSWORD = "STRATOS1976!!!"
+ADMIN_PIN = os.environ.get("ADMIN_PIN", "2580")
+DELETE_PASSWORD = os.environ.get("DELETE_PASSWORD", "STRATOS1976!!!")
 DB_NAME = "streetkiosk.db"
 
 
@@ -24,6 +25,7 @@ def now_str():
 
 def init_db():
     conn = get_db()
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,6 +40,7 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+
     conn.execute("""
         CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,6 +50,7 @@ def init_db():
             FOREIGN KEY(customer_id) REFERENCES customers(id)
         )
     """)
+
     conn.commit()
     conn.close()
 
@@ -62,23 +66,108 @@ REGISTER_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>STREETKIOSK</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.card{background:white;width:400px;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15)}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.card{
+    background:white;
+    width:400px;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15)
+}
 h1{text-align:center;margin-top:0}
 p{text-align:center;color:#666}
-input{width:100%;box-sizing:border-box;padding:12px;margin-bottom:12px;border:1px solid #ccc;border-radius:10px;font-size:16px}
-button{width:100%;padding:14px;border:none;border-radius:10px;background:#222;color:white;font-size:16px;cursor:pointer}
-.list{margin-top:20px;border-top:1px solid #eee;padding-top:12px}
-.customer{padding:10px;background:#fafafa;border-radius:10px;margin-bottom:8px}
-.customer a{text-decoration:none;color:#222;font-weight:bold}
+input{
+    width:100%;
+    box-sizing:border-box;
+    padding:12px;
+    margin-bottom:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:16px
+}
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:#222;
+    color:white;
+    font-size:16px;
+    cursor:pointer
+}
+.list{
+    margin-top:20px;
+    border-top:1px solid #eee;
+    padding-top:12px
+}
+.customer{
+    padding:10px;
+    background:#fafafa;
+    border-radius:10px;
+    margin-bottom:8px
+}
+.customer a{
+    text-decoration:none;
+    color:#222;
+    font-weight:bold
+}
 .small{font-size:13px;color:#777}
-.toplink{display:inline-block;margin-top:10px;text-decoration:none;color:#222;font-weight:bold}
-.notice{margin-top:12px;padding:10px;background:#fff8e1;border:1px solid #f0d98a;border-radius:10px;font-size:14px;color:#6b5a00;text-align:center}
-hr{margin:18px 0;border:none;border-top:1px solid #eee}
-.terms{font-size:14px;color:#444;background:#fafafa;padding:12px;border-radius:10px;margin-bottom:12px}
-.checkline{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
-.checkline input{width:auto;margin:3px 0 0 0}
-.checkline label{text-align:left;font-size:14px;color:#333}
+.toplink{
+    display:inline-block;
+    margin-top:10px;
+    text-decoration:none;
+    color:#222;
+    font-weight:bold
+}
+.notice{
+    margin-top:12px;
+    margin-bottom:12px;
+    padding:10px;
+    background:#fff8e1;
+    border:1px solid #f0d98a;
+    border-radius:10px;
+    font-size:14px;
+    color:#6b5a00;
+    text-align:center
+}
+hr{
+    margin:18px 0;
+    border:none;
+    border-top:1px solid #eee
+}
+.terms{
+    font-size:14px;
+    color:#444;
+    background:#fafafa;
+    padding:12px;
+    border-radius:10px;
+    margin-bottom:12px;
+    text-align:left
+}
+.checkline{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    margin-bottom:12px
+}
+.checkline input{
+    width:auto;
+    margin:3px 0 0 0
+}
+.checkline label{
+    text-align:left;
+    font-size:14px;
+    color:#333
+}
 </style>
 </head>
 <body>
@@ -97,7 +186,7 @@ hr{margin:18px 0;border:none;border-top:1px solid #eee}
 
         <div class="terms">
             <strong>Όροι loyalty</strong><br>
-            Με την εγγραφή σου στο πρόγραμμα loyalty αποδέχεσαι τη χρήση των στοιχείων σου
+            Με την εγγραφή στο πρόγραμμα loyalty αποδέχεσαι τη χρήση των στοιχείων σου
             για τη λειτουργία της κάρτας καφέ, την καταγραφή σφραγίδων και την εξυπηρέτησή σου.
         </div>
 
@@ -150,22 +239,71 @@ CUSTOMER_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Κάρτα Πελάτη</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.card{background:white;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);width:360px;text-align:center}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.card{
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    width:360px;
+    text-align:center
+}
 .title{font-size:26px;font-weight:bold;margin-bottom:8px}
 .name{color:#555;margin-bottom:6px;font-weight:bold}
 .phone{color:#777;margin-bottom:16px;font-size:14px}
-.stamps{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:20px;justify-items:center}
-.stamp{width:70px;height:70px;border-radius:50%;border:3px solid #333;display:flex;align-items:center;justify-content:center;font-size:22px;background:white}
+.stamps{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+    margin-top:20px;
+    justify-items:center
+}
+.stamp{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    border:3px solid #333;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    background:white
+}
 .filled{background:#222;color:white}
 .reward{background:gold;border-color:#caa400}
 .info{margin-top:18px;font-weight:bold}
 .qrbox{margin-top:18px}
-.btn{display:inline-block;margin-top:18px;padding:10px 14px;background:#222;color:white;text-decoration:none;border-radius:10px}
-.btn2{display:inline-block;margin-top:10px;padding:10px 14px;background:#555;color:white;text-decoration:none;border-radius:10px}
-.history{margin-top:20px;text-align:left;background:#fafafa;padding:12px;border-radius:12px}
+.btn2{
+    display:inline-block;
+    margin-top:10px;
+    padding:10px 14px;
+    background:#555;
+    color:white;
+    text-decoration:none;
+    border-radius:10px
+}
+.history{
+    margin-top:20px;
+    text-align:left;
+    background:#fafafa;
+    padding:12px;
+    border-radius:12px
+}
 .history h3{margin-top:0;font-size:16px}
-.history-item{font-size:14px;padding:6px 0;border-bottom:1px solid #eee}
+.history-item{
+    font-size:14px;
+    padding:6px 0;
+    border-bottom:1px solid #eee
+}
 .history-item:last-child{border-bottom:none}
 </style>
 </head>
@@ -222,10 +360,45 @@ PIN_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin PIN</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.box{background:white;width:340px;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);text-align:center}
-input{width:100%;box-sizing:border-box;padding:12px;margin-top:12px;border:1px solid #ccc;border-radius:10px;font-size:18px;text-align:center}
-button{width:100%;padding:14px;margin-top:12px;border:none;border-radius:10px;background:#222;color:white;font-size:17px;cursor:pointer}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.box{
+    background:white;
+    width:340px;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    text-align:center
+}
+input{
+    width:100%;
+    box-sizing:border-box;
+    padding:12px;
+    margin-top:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:18px;
+    text-align:center
+}
+button{
+    width:100%;
+    padding:14px;
+    margin-top:12px;
+    border:none;
+    border-radius:10px;
+    background:#222;
+    color:white;
+    font-size:17px;
+    cursor:pointer
+}
 .error{color:#b00020;margin-top:10px}
 </style>
 </head>
@@ -252,12 +425,52 @@ DELETE_HTML = """
 <meta charset="UTF-8">
 <title>Διαγραφή Πελάτη</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.box{background:white;width:360px;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);text-align:center}
-input{width:100%;box-sizing:border-box;padding:12px;margin-top:12px;border:1px solid #ccc;border-radius:10px;font-size:18px;text-align:center}
-button{width:100%;padding:14px;margin-top:12px;border:none;border-radius:10px;background:#b00020;color:white;font-size:17px;cursor:pointer}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.box{
+    background:white;
+    width:360px;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    text-align:center
+}
+input{
+    width:100%;
+    box-sizing:border-box;
+    padding:12px;
+    margin-top:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:18px;
+    text-align:center
+}
+button{
+    width:100%;
+    padding:14px;
+    margin-top:12px;
+    border:none;
+    border-radius:10px;
+    background:#b00020;
+    color:white;
+    font-size:17px;
+    cursor:pointer
+}
 .error{color:#b00020;margin-top:10px}
-.back{display:inline-block;margin-top:12px;text-decoration:none;color:#222}
+.back{
+    display:inline-block;
+    margin-top:12px;
+    text-decoration:none;
+    color:#222
+}
 </style>
 </head>
 <body>
@@ -271,7 +484,7 @@ button{width:100%;padding:14px;margin-top:12px;border:none;border-radius:10px;ba
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
-    <a class="back" href="/cashier/{{ customer_id }}?pin=2580">Επιστροφή</a>
+    <a class="back" href="/customer/{{ customer_id }}">Επιστροφή</a>
 </div>
 </body>
 </html>
@@ -285,18 +498,46 @@ CASHIER_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ταμείο</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:20px}
-.panel{background:white;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);width:360px;text-align:center}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.panel{
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    width:360px;
+    text-align:center
+}
 .title{font-size:26px;font-weight:bold}
 .name{margin-top:8px;color:#555;font-weight:bold}
 .info{margin:16px 0;font-weight:bold}
 .row{display:flex;gap:10px;margin-top:14px}
 .row form{flex:1;margin:0}
-.btn{width:100%;border:none;border-radius:12px;padding:14px 10px;font-size:18px;cursor:pointer}
+.btn{
+    width:100%;
+    border:none;
+    border-radius:12px;
+    padding:14px 10px;
+    font-size:18px;
+    cursor:pointer
+}
 .dark{background:#222;color:white}
 .gold{background:gold;color:#222}
 .red{background:#b00020;color:white}
-.back{display:inline-block;margin-top:18px;color:#222;text-decoration:none}
+.back{
+    display:inline-block;
+    margin-top:18px;
+    color:#222;
+    text-decoration:none
+}
 </style>
 </head>
 <body>
@@ -348,8 +589,23 @@ RESULT_HTML = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Αποτέλεσμα</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
-.box{background:white;padding:30px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);width:320px;text-align:center}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0
+}
+.box{
+    background:white;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    width:320px;
+    text-align:center
+}
 </style>
 </head>
 <body>
@@ -370,10 +626,31 @@ SCANNER_HTML = """
 <title>Scanner</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px;text-align:center}
-.box{max-width:500px;margin:0 auto;background:white;padding:20px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15)}
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    margin:0;
+    padding:20px;
+    text-align:center
+}
+.box{
+    max-width:500px;
+    margin:0 auto;
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15)
+}
 #reader{width:100%;margin-top:20px}
-.btn{display:inline-block;margin-top:14px;padding:10px 14px;background:#222;color:white;text-decoration:none;border-radius:10px}
+.btn{
+    display:inline-block;
+    margin-top:14px;
+    padding:10px 14px;
+    background:#222;
+    color:white;
+    text-decoration:none;
+    border-radius:10px
+}
 </style>
 </head>
 <body>
@@ -392,7 +669,13 @@ function onScanSuccess(decodedText) {
         window.location.href = "/cashier/" + customerId;
     }
 }
-const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 220 }, false);
+
+const html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: 220 },
+    false
+);
+
 html5QrcodeScanner.render(onScanSuccess);
 </script>
 </body>
@@ -408,9 +691,20 @@ ADMIN_HTML = """
 <style>
 body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px}
 .wrap{max-width:900px;margin:0 auto}
-.card{background:white;padding:20px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.15);margin-bottom:20px}
+.card{
+    background:white;
+    padding:20px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    margin-bottom:20px
+}
 table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+th,td{
+    padding:10px;
+    border-bottom:1px solid #eee;
+    text-align:left;
+    font-size:14px
+}
 </style>
 </head>
 <body>
@@ -421,6 +715,7 @@ th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
         <p>Καφέδες που περάστηκαν: {{ total_added }}</p>
         <p>Εξαργυρώσεις: {{ total_redeems }}</p>
     </div>
+
     <div class="card">
         <h2>Πελάτες</h2>
         <table>
@@ -449,19 +744,30 @@ th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
 </html>
 """
 
+
 @app.route("/")
 def home():
     message = request.args.get("message", "")
     conn = get_db()
     customers = conn.execute("SELECT * FROM customers ORDER BY id DESC").fetchall()
     conn.close()
-    return render_template_string(REGISTER_HTML, customers=customers, target=TARGET, message=message)
+    return render_template_string(
+        REGISTER_HTML,
+        customers=customers,
+        target=TARGET,
+        message=message
+    )
+
 
 @app.route("/register", methods=["POST"])
 def register():
     name = request.form.get("name", "").strip()
     phone = request.form.get("phone", "").strip()
     email = request.form.get("email", "").strip().lower()
+
+    if email == "":
+        email = None
+
     terms = 1 if request.form.get("terms") == "1" else 0
     marketing = 1 if request.form.get("marketing") == "1" else 0
 
@@ -470,10 +776,16 @@ def register():
 
     conn = get_db()
 
-    existing = conn.execute(
-        "SELECT id FROM customers WHERE phone = ? OR (email != '' AND email = ?)",
-        (phone, email)
-    ).fetchone()
+    if email:
+        existing = conn.execute(
+            "SELECT id FROM customers WHERE phone = ? OR email = ?",
+            (phone, email)
+        ).fetchone()
+    else:
+        existing = conn.execute(
+            "SELECT id FROM customers WHERE phone = ?",
+            (phone,)
+        ).fetchone()
 
     if existing:
         conn.close()
@@ -484,19 +796,32 @@ def register():
 
     cur = conn.execute("""
         INSERT INTO customers
-        (name, phone, email, stamps, terms_accepted, marketing_consent, terms_accepted_at, marketing_consent_at, created_at)
+        (name, phone, email, stamps, terms_accepted, marketing_consent,
+         terms_accepted_at, marketing_consent_at, created_at)
         VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
-    """, (name, phone, email, terms, marketing, accepted_at, marketing_at, accepted_at))
+    """, (
+        name,
+        phone,
+        email,
+        terms,
+        marketing,
+        accepted_at,
+        marketing_at,
+        accepted_at
+    ))
+
     customer_id = cur.lastrowid
 
     conn.execute(
         "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
         (customer_id, "Εγγραφή πελάτη", accepted_at)
     )
+
     conn.commit()
     conn.close()
 
     return redirect(url_for("customer_card", customer_id=customer_id))
+
 
 @app.route("/search", methods=["POST"])
 def search():
@@ -505,7 +830,10 @@ def search():
         return redirect(url_for("home"))
 
     conn = get_db()
-    customer = conn.execute("SELECT id FROM customers WHERE phone = ?", (phone,)).fetchone()
+    customer = conn.execute(
+        "SELECT id FROM customers WHERE phone = ?",
+        (phone,)
+    ).fetchone()
     conn.close()
 
     if customer:
@@ -513,14 +841,20 @@ def search():
 
     return redirect(url_for("home", message="Δεν βρέθηκε πελάτης"))
 
+
 @app.route("/customer/<int:customer_id>")
 def customer_card(customer_id):
     conn = get_db()
-    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    customer = conn.execute(
+        "SELECT * FROM customers WHERE id = ?",
+        (customer_id,)
+    ).fetchone()
+
     history = conn.execute(
         "SELECT * FROM history WHERE customer_id = ? ORDER BY id DESC",
         (customer_id,)
     ).fetchall()
+
     conn.close()
 
     if not customer:
@@ -535,16 +869,24 @@ def customer_card(customer_id):
         history=history
     )
 
+
 @app.route("/cashier/<int:customer_id>", methods=["GET", "POST"])
 def cashier(customer_id):
     conn = get_db()
-    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    customer = conn.execute(
+        "SELECT * FROM customers WHERE id = ?",
+        (customer_id,)
+    ).fetchone()
     conn.close()
 
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
 
     pin = request.values.get("pin", "")
+
+    if not pin:
+        return render_template_string(PIN_HTML, error="")
+
     if pin != ADMIN_PIN:
         return render_template_string(PIN_HTML, error="Λάθος PIN")
 
@@ -557,14 +899,22 @@ def cashier(customer_id):
         pin=pin
     )
 
+
 @app.route("/add/<int:customer_id>/<int:amount>", methods=["POST"])
 def add_stamps(customer_id, amount):
     pin = request.form.get("pin", "")
     if pin != ADMIN_PIN:
         return "Μη εξουσιοδοτημένη πρόσβαση", 403
 
+    if amount not in [1, 2, 3]:
+        return "Μη έγκυρος αριθμός καφέδων", 400
+
     conn = get_db()
-    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    customer = conn.execute(
+        "SELECT * FROM customers WHERE id = ?",
+        (customer_id,)
+    ).fetchone()
+
     if not customer:
         conn.close()
         return "Ο πελάτης δεν βρέθηκε", 404
@@ -573,11 +923,18 @@ def add_stamps(customer_id, amount):
     if new_stamps > TARGET:
         new_stamps = TARGET
 
-    conn.execute("UPDATE customers SET stamps = ? WHERE id = ?", (new_stamps, customer_id))
+    conn.execute(
+        "UPDATE customers SET stamps = ? WHERE id = ?",
+        (new_stamps, customer_id)
+    )
+
+    action_text = f"+{amount} καφές" if amount == 1 else f"+{amount} καφέδες"
+
     conn.execute(
         "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
-        (customer_id, f"+{amount} καφές" if amount == 1 else f"+{amount} καφέδες", now_str())
+        (customer_id, action_text, now_str())
     )
+
     conn.commit()
     conn.close()
 
@@ -592,6 +949,7 @@ def add_stamps(customer_id, amount):
         pin=pin
     )
 
+
 @app.route("/redeem/<int:customer_id>", methods=["POST"])
 def redeem(customer_id):
     pin = request.form.get("pin", "")
@@ -599,7 +957,11 @@ def redeem(customer_id):
         return "Μη εξουσιοδοτημένη πρόσβαση", 403
 
     conn = get_db()
-    customer = conn.execute("SELECT * FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    customer = conn.execute(
+        "SELECT * FROM customers WHERE id = ?",
+        (customer_id,)
+    ).fetchone()
+
     if not customer:
         conn.close()
         return "Ο πελάτης δεν βρέθηκε", 404
@@ -615,11 +977,16 @@ def redeem(customer_id):
             pin=pin
         )
 
-    conn.execute("UPDATE customers SET stamps = 0 WHERE id = ?", (customer_id,))
+    conn.execute(
+        "UPDATE customers SET stamps = 0 WHERE id = ?",
+        (customer_id,)
+    )
+
     conn.execute(
         "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
         (customer_id, "Εξαργύρωση δώρου", now_str())
     )
+
     conn.commit()
     conn.close()
 
@@ -632,6 +999,7 @@ def redeem(customer_id):
         pin=pin
     )
 
+
 @app.route("/delete/<int:customer_id>", methods=["GET", "POST"])
 def delete_customer(customer_id):
     if request.method == "GET":
@@ -639,7 +1007,11 @@ def delete_customer(customer_id):
 
     delete_password = request.form.get("delete_password", "")
     if delete_password != DELETE_PASSWORD:
-        return render_template_string(DELETE_HTML, customer_id=customer_id, error="Λάθος κωδικός διαγραφής")
+        return render_template_string(
+            DELETE_HTML,
+            customer_id=customer_id,
+            error="Λάθος κωδικός διαγραφής"
+        )
 
     conn = get_db()
     conn.execute("DELETE FROM history WHERE customer_id = ?", (customer_id,))
@@ -649,9 +1021,11 @@ def delete_customer(customer_id):
 
     return redirect(url_for("home", message="Ο πελάτης διαγράφηκε"))
 
+
 @app.route("/scanner")
 def scanner():
     return render_template_string(SCANNER_HTML)
+
 
 @app.route("/admin")
 def admin():
@@ -662,13 +1036,16 @@ def admin():
 
     total_added = 0
     total_redeems = 0
+
     for r in rows:
         action = r["action"]
+
         if action.startswith("+"):
             try:
                 total_added += int(action[1])
-            except:
+            except Exception:
                 pass
+
         if action == "Εξαργύρωση δώρου":
             total_redeems += 1
 
@@ -680,10 +1057,14 @@ def admin():
         total_redeems=total_redeems
     )
 
+
 @app.route("/qr/<int:customer_id>")
 def qr(customer_id):
     conn = get_db()
-    customer = conn.execute("SELECT id FROM customers WHERE id = ?", (customer_id,)).fetchone()
+    customer = conn.execute(
+        "SELECT id FROM customers WHERE id = ?",
+        (customer_id,)
+    ).fetchone()
     conn.close()
 
     if not customer:
@@ -697,6 +1078,7 @@ def qr(customer_id):
     buf.seek(0)
 
     return send_file(buf, mimetype="image/png")
+
 
 if __name__ == "__main__":
     app.run(debug=True)
