@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, send_file, redirect, url_for, request
+from flask import Flask, render_template_string, send_file, redirect, url_for, request, session
 import qrcode
 import io
 import sqlite3
@@ -6,10 +6,12 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "streetkiosk-secret-key-2026")
 
 TARGET = 5
 ADMIN_PIN = os.environ.get("ADMIN_PIN", "2580")
 DELETE_PASSWORD = os.environ.get("DELETE_PASSWORD", "STRATOS1976!!!")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "STRATOSADMIN2026")
 DB_NAME = "streetkiosk.db"
 
 
@@ -56,6 +58,14 @@ def init_db():
 
 
 init_db()
+
+
+def cashier_logged_in():
+    return session.get("cashier_auth") is True
+
+
+def admin_logged_in():
+    return session.get("admin_auth") is True
 
 
 REGISTER_HTML = """
@@ -358,7 +368,7 @@ PIN_HTML = """
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin PIN</title>
+<title>Ταμείο Login</title>
 <style>
 body{
     font-family:Arial,sans-serif;
@@ -405,9 +415,74 @@ button{
 <body>
 <div class="box">
     <h2>Κωδικός Ταμείου</h2>
-    <p>Βάλε τον admin PIN για να ανοίξει το ταμείο</p>
+    <p>Βάλε τον admin PIN μία φορά για να ανοίξει το ταμείο</p>
     <form method="post">
         <input type="password" name="pin" placeholder="PIN" required>
+        <button type="submit">Είσοδος</button>
+    </form>
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+</div>
+</body>
+</html>
+"""
+
+ADMIN_LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<title>Admin Login</title>
+<style>
+body{
+    font-family:Arial,sans-serif;
+    background:#f4f4f4;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    margin:0;
+    padding:20px
+}
+.box{
+    background:white;
+    width:360px;
+    padding:30px;
+    border-radius:16px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.15);
+    text-align:center
+}
+input{
+    width:100%;
+    box-sizing:border-box;
+    padding:12px;
+    margin-top:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:18px;
+    text-align:center
+}
+button{
+    width:100%;
+    padding:14px;
+    margin-top:12px;
+    border:none;
+    border-radius:10px;
+    background:#222;
+    color:white;
+    font-size:17px;
+    cursor:pointer
+}
+.error{color:#b00020;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="box">
+    <h2>Admin Login</h2>
+    <p>Βάλε τον admin κωδικό για να δεις τη λίστα πελατών</p>
+    <form method="post">
+        <input type="password" name="password" placeholder="Admin password" required>
         <button type="submit">Είσοδος</button>
     </form>
     {% if error %}
@@ -538,6 +613,13 @@ body{
     color:#222;
     text-decoration:none
 }
+.logout{
+    display:inline-block;
+    margin-top:10px;
+    color:#b00020;
+    text-decoration:none;
+    font-weight:bold
+}
 </style>
 </head>
 <body>
@@ -548,22 +630,18 @@ body{
 
     <div class="row">
         <form method="post" action="/add/{{ customer_id }}/1">
-            <input type="hidden" name="pin" value="{{ pin }}">
             <button class="btn dark" type="submit">+1</button>
         </form>
         <form method="post" action="/add/{{ customer_id }}/2">
-            <input type="hidden" name="pin" value="{{ pin }}">
             <button class="btn dark" type="submit">+2</button>
         </form>
         <form method="post" action="/add/{{ customer_id }}/3">
-            <input type="hidden" name="pin" value="{{ pin }}">
             <button class="btn dark" type="submit">+3</button>
         </form>
     </div>
 
     <div class="row">
         <form method="post" action="/redeem/{{ customer_id }}">
-            <input type="hidden" name="pin" value="{{ pin }}">
             <button class="btn gold" type="submit">Εξαργύρωση Δώρου</button>
         </form>
     </div>
@@ -574,7 +652,8 @@ body{
         </form>
     </div>
 
-    <a class="back" href="/customer/{{ customer_id }}">Επιστροφή στην κάρτα</a>
+    <a class="back" href="/customer/{{ customer_id }}">Επιστροφή στην κάρτα</a><br>
+    <a class="logout" href="/cashier-logout">Logout Ταμείου</a>
 </div>
 </body>
 </html>
@@ -585,7 +664,7 @@ RESULT_HTML = """
 <html lang="el">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="1.5;url=/cashier/{{ customer_id }}?pin={{ pin }}">
+<meta http-equiv="refresh" content="1.5;url=/customer/{{ customer_id }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Αποτέλεσμα</title>
 <style>
@@ -651,6 +730,13 @@ body{
     text-decoration:none;
     border-radius:10px
 }
+.logout{
+    display:inline-block;
+    margin-top:10px;
+    color:#b00020;
+    text-decoration:none;
+    font-weight:bold
+}
 </style>
 </head>
 <body>
@@ -658,7 +744,8 @@ body{
     <h2>📷 Scanner Πελάτη</h2>
     <p>Σκάναρε το QR του πελάτη για να ανοίξει το ταμείο του</p>
     <div id="reader"></div>
-    <a class="btn" href="/">Πίσω</a>
+    <a class="btn" href="/">Πίσω</a><br>
+    <a class="logout" href="/cashier-logout">Logout Ταμείου</a>
 </div>
 
 <script>
@@ -705,6 +792,13 @@ th,td{
     text-align:left;
     font-size:14px
 }
+.logout{
+    display:inline-block;
+    margin-top:10px;
+    color:#b00020;
+    text-decoration:none;
+    font-weight:bold
+}
 </style>
 </head>
 <body>
@@ -714,6 +808,7 @@ th,td{
         <p>Πελάτες: {{ total_customers }}</p>
         <p>Καφέδες που περάστηκαν: {{ total_added }}</p>
         <p>Εξαργυρώσεις: {{ total_redeems }}</p>
+        <a class="logout" href="/admin-logout">Logout Admin</a>
     </div>
 
     <div class="card">
@@ -870,8 +965,32 @@ def customer_card(customer_id):
     )
 
 
-@app.route("/cashier/<int:customer_id>", methods=["GET", "POST"])
+@app.route("/cashier-login", methods=["GET", "POST"])
+def cashier_login():
+    if cashier_logged_in():
+        return redirect(url_for("scanner"))
+
+    if request.method == "POST":
+        pin = request.form.get("pin", "")
+        if pin == ADMIN_PIN:
+            session["cashier_auth"] = True
+            return redirect(url_for("scanner"))
+        return render_template_string(PIN_HTML, error="Λάθος PIN")
+
+    return render_template_string(PIN_HTML, error="")
+
+
+@app.route("/cashier-logout")
+def cashier_logout():
+    session.pop("cashier_auth", None)
+    return redirect(url_for("cashier_login"))
+
+
+@app.route("/cashier/<int:customer_id>")
 def cashier(customer_id):
+    if not cashier_logged_in():
+        return redirect(url_for("cashier_login"))
+
     conn = get_db()
     customer = conn.execute(
         "SELECT * FROM customers WHERE id = ?",
@@ -882,29 +1001,19 @@ def cashier(customer_id):
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
 
-    pin = request.values.get("pin", "")
-
-    if not pin:
-        return render_template_string(PIN_HTML, error="")
-
-    if pin != ADMIN_PIN:
-        return render_template_string(PIN_HTML, error="Λάθος PIN")
-
     return render_template_string(
         CASHIER_HTML,
         customer=customer,
         customer_id=customer_id,
         stamps=customer["stamps"],
-        target=TARGET,
-        pin=pin
+        target=TARGET
     )
 
 
 @app.route("/add/<int:customer_id>/<int:amount>", methods=["POST"])
 def add_stamps(customer_id, amount):
-    pin = request.form.get("pin", "")
-    if pin != ADMIN_PIN:
-        return "Μη εξουσιοδοτημένη πρόσβαση", 403
+    if not cashier_logged_in():
+        return redirect(url_for("cashier_login"))
 
     if amount not in [1, 2, 3]:
         return "Μη έγκυρος αριθμός καφέδων", 400
@@ -945,16 +1054,14 @@ def add_stamps(customer_id, amount):
         message=message,
         stamps=new_stamps,
         target=TARGET,
-        customer_id=customer_id,
-        pin=pin
+        customer_id=customer_id
     )
 
 
 @app.route("/redeem/<int:customer_id>", methods=["POST"])
 def redeem(customer_id):
-    pin = request.form.get("pin", "")
-    if pin != ADMIN_PIN:
-        return "Μη εξουσιοδοτημένη πρόσβαση", 403
+    if not cashier_logged_in():
+        return redirect(url_for("cashier_login"))
 
     conn = get_db()
     customer = conn.execute(
@@ -973,8 +1080,7 @@ def redeem(customer_id):
             message="Δεν υπάρχει ακόμα δώρο",
             stamps=customer["stamps"],
             target=TARGET,
-            customer_id=customer_id,
-            pin=pin
+            customer_id=customer_id
         )
 
     conn.execute(
@@ -995,13 +1101,15 @@ def redeem(customer_id):
         message="Το δώρο εξαργυρώθηκε ✅",
         stamps=0,
         target=TARGET,
-        customer_id=customer_id,
-        pin=pin
+        customer_id=customer_id
     )
 
 
 @app.route("/delete/<int:customer_id>", methods=["GET", "POST"])
 def delete_customer(customer_id):
+    if not cashier_logged_in():
+        return redirect(url_for("cashier_login"))
+
     if request.method == "GET":
         return render_template_string(DELETE_HTML, customer_id=customer_id, error="")
 
@@ -1024,11 +1132,37 @@ def delete_customer(customer_id):
 
 @app.route("/scanner")
 def scanner():
+    if not cashier_logged_in():
+        return redirect(url_for("cashier_login"))
     return render_template_string(SCANNER_HTML)
+
+
+@app.route("/admin-login", methods=["GET", "POST"])
+def admin_login():
+    if admin_logged_in():
+        return redirect(url_for("admin"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if password == ADMIN_PASSWORD:
+            session["admin_auth"] = True
+            return redirect(url_for("admin"))
+        return render_template_string(ADMIN_LOGIN_HTML, error="Λάθος admin password")
+
+    return render_template_string(ADMIN_LOGIN_HTML, error="")
+
+
+@app.route("/admin-logout")
+def admin_logout():
+    session.pop("admin_auth", None)
+    return redirect(url_for("admin_login"))
 
 
 @app.route("/admin")
 def admin():
+    if not admin_logged_in():
+        return redirect(url_for("admin_login"))
+
     conn = get_db()
     customers = conn.execute("SELECT * FROM customers ORDER BY id DESC").fetchall()
     rows = conn.execute("SELECT action FROM history").fetchall()
