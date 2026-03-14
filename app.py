@@ -292,7 +292,6 @@ body{
         <img src="/qr/{{ customer_id }}" width="180">
     </div>
 
-    <a class="btn" href="/cashier/{{ customer_id }}">Ταμείο</a><br>
     <a class="btn2" href="/">Πίσω στην εγγραφή</a>
 
     <div class="history">
