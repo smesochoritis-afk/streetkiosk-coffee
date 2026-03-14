@@ -91,6 +91,21 @@ button{
     color:#222;
     font-weight:bold;
 }
+.notice{
+    margin-top:12px;
+    padding:10px;
+    background:#fff8e1;
+    border:1px solid #f0d98a;
+    border-radius:10px;
+    font-size:14px;
+    color:#6b5a00;
+    text-align:center;
+}
+hr{
+    margin:18px 0;
+    border:none;
+    border-top:1px solid #eee;
+}
 </style>
 </head>
 <body>
@@ -98,11 +113,22 @@ button{
     <h1>☕ STREETKIOSK</h1>
     <p>Εγγραφή νέου πελάτη</p>
 
+    {% if message %}
+        <div class="notice">{{ message }}</div>
+    {% endif %}
+
     <form method="post" action="/register">
         <input type="text" name="name" placeholder="Όνομα πελάτη" required>
         <input type="text" name="phone" placeholder="Κινητό" required>
         <input type="email" name="email" placeholder="Email (προαιρετικό)">
         <button type="submit">Δημιουργία κάρτας</button>
+    </form>
+
+    <hr>
+
+    <form method="post" action="/search">
+        <input type="text" name="phone" placeholder="Αναζήτηση πελάτη με κινητό">
+        <button type="submit">Αναζήτηση</button>
     </form>
 
     <p><a class="toplink" href="/scanner">Άνοιγμα Scanner Ταμείου</a></p>
@@ -560,7 +586,11 @@ body{
 
 <script>
 function onScanSuccess(decodedText) {
-    if (decodedText.startsWith("customer:")) {
+    if (decodedText.includes("/customer/")) {
+        const parts = decodedText.split("/customer/");
+        const customerId = parts[1].split(/[?#]/)[0];
+        window.location.href = "/cashier/" + customerId;
+    } else if (decodedText.startsWith("customer:")) {
         const customerId = decodedText.split(":")[1];
         window.location.href = "/cashier/" + customerId;
     }
@@ -580,7 +610,13 @@ html5QrcodeScanner.render(onScanSuccess);
 
 @app.route("/")
 def home():
-    return render_template_string(REGISTER_HTML, customers=customers, target=TARGET)
+    message = request.args.get("message", "")
+    return render_template_string(
+        REGISTER_HTML,
+        customers=customers,
+        target=TARGET,
+        message=message
+    )
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -588,10 +624,20 @@ def register():
 
     name = request.form.get("name", "").strip()
     phone = request.form.get("phone", "").strip()
-    email = request.form.get("email", "").strip()
+    email = request.form.get("email", "").strip().lower()
 
     if not name or not phone:
-        return redirect(url_for("home"))
+        return redirect(url_for("home", message="Συμπλήρωσε όνομα και κινητό"))
+
+    for cid, customer in customers.items():
+        existing_phone = customer.get("phone", "").strip()
+        existing_email = customer.get("email", "").strip().lower()
+
+        same_phone = phone and existing_phone == phone
+        same_email = email and existing_email == email
+
+        if same_phone or same_email:
+            return redirect(url_for("customer_card", customer_id=cid))
 
     customer_id = str(next_customer_id)
     next_customer_id += 1
@@ -605,6 +651,19 @@ def register():
     }
 
     return redirect(url_for("customer_card", customer_id=customer_id))
+
+@app.route("/search", methods=["POST"])
+def search():
+    phone = request.form.get("phone", "").strip()
+
+    if not phone:
+        return redirect(url_for("home"))
+
+    for cid, customer in customers.items():
+        if customer.get("phone", "").strip() == phone:
+            return redirect(url_for("customer_card", customer_id=cid))
+
+    return redirect(url_for("home", message="Δεν βρέθηκε πελάτης"))
 
 @app.route("/customer/<customer_id>")
 def customer_card(customer_id):
@@ -729,7 +788,7 @@ def qr(customer_id):
     if not customer:
         return "Ο πελάτης δεν βρέθηκε", 404
 
-    payload = "customer:" + customer_id
+    payload = url_for("customer_card", customer_id=customer_id, _external=True)
 
     img = qrcode.make(payload)
     buf = io.BytesIO()
