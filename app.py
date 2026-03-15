@@ -344,10 +344,8 @@ body{
         <p>Το QR του πελάτη</p>
         <img src="/qr/{{ customer_id }}" width="180">
     </div>
-
-    <a class="btn2" href="/">Αρχική</a>
-
-    <div class="history">
+<a class="btn2" href="/customer/{{ customer_id }}">Ανανέωση κάρτας</a>
+<div class="history">
         <h3>Ιστορικό</h3>
         {% if history %}
             {% for item in history %}
