@@ -220,8 +220,8 @@ hr{
         <button type="submit">Αναζήτηση</button>
     </form>
 
-    <p><a class="toplink" href="/scanner">Άνοιγμα Scanner Ταμείου</a></p>
-    <p><a class="toplink" href="/admin">Λίστα πελατών / πωλήσεις</a></p>
+    <p><a class="toplink" href="/cashier-login">Είσοδος Ταμείου</a></p>
+    <p><a class="toplink" href="/admin">Admin / Πωλήσεις</a></p>
 
     <div class="list">
         <strong>Πελάτες:</strong>
@@ -301,6 +301,11 @@ body{
     text-decoration:none;
     border-radius:10px
 }
+.tip{
+    font-size:13px;
+    color:#666;
+    margin-top:12px
+}
 .history{
     margin-top:20px;
     text-align:left;
@@ -340,17 +345,16 @@ body{
         {% endif %}
     </div>
 
-<div class="qrbox">
-    <p>Το QR του πελάτη</p>
-    <img src="/qr/{{ customer_id }}" width="180">
-</div>
+    <div class="qrbox">
+        <p>Το QR του πελάτη</p>
+        <img src="/qr/{{ customer_id }}" width="180">
+    </div>
 
-<p style="font-size:13px;color:#666;margin-top:12px;">
-Αποθήκευσε αυτή την κάρτα στην αρχική οθόνη του κινητού σου.
-</p>
+    <p class="tip">Αποθήκευσε αυτή την κάρτα στην αρχική οθόνη του κινητού σου.</p>
 
-<a class="btn2" href="/customer/{{ customer_id }}">Ανανέωση κάρτας</a>
-<div class="history">
+    <a class="btn2" href="/customer/{{ customer_id }}">Ανανέωση κάρτας</a>
+
+    <div class="history">
         <h3>Ιστορικό</h3>
         {% if history %}
             {% for item in history %}
