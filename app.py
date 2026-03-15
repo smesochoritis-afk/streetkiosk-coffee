@@ -340,10 +340,15 @@ body{
         {% endif %}
     </div>
 
-    <div class="qrbox">
-        <p>Το QR του πελάτη</p>
-        <img src="/qr/{{ customer_id }}" width="180">
-    </div>
+<div class="qrbox">
+    <p>Το QR του πελάτη</p>
+    <img src="/qr/{{ customer_id }}" width="180">
+</div>
+
+<p style="font-size:13px;color:#666;margin-top:12px;">
+Αποθήκευσε αυτή την κάρτα στην αρχική οθόνη του κινητού σου.
+</p>
+
 <a class="btn2" href="/customer/{{ customer_id }}">Ανανέωση κάρτας</a>
 <div class="history">
         <h3>Ιστορικό</h3>
