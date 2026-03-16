@@ -1147,13 +1147,7 @@ def add_stamps(customer_id, amount):
     else:
         message = f"Προστέθηκαν {amount} καφέδες ☕"
 
-    return render_template_string(
-        RESULT_HTML,
-        message=message,
-        stamps=new_stamps,
-        target=TARGET,
-        customer_id=customer_id
-    )
+    return redirect(url_for("scanner"))
 
 
 
