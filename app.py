@@ -1,4 +1,11 @@
+ΟΚ. Πάμε με τη **σίγουρη λύση** χωρίς άλλα μπαλώματα.
 
+Το app σου έχει ταλαιπωρηθεί από πολλά μισά edits.
+Η πιο καθαρή κίνηση τώρα είναι:
+
+**σβήσε όλο το `app.py` και βάλε αυτό το μικρό, καθαρό, σίγουρο αρχείο** για να ξανανοίξει πρώτα το site.
+
+```python
 from flask import Flask, request, redirect, url_for, render_template_string, send_file, session
 import sqlite3
 import io
@@ -177,4 +184,28 @@ def scanner():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+```
+
+Και το `requirements.txt` να είναι μόνο αυτό:
+
+```txt
+flask
+gunicorn
+qrcode
+pillow
+```
+
+Μετά κάνε:
+
+1. save
+2. commit
+3. push
+
+Και άνοιξε μόνο αυτά:
+
+* `/`
+* `/cashier-login`
+* `/scanner`
+
+Αν αυτό ανοίξει, τότε χτίζουμε ξανά πάνω του το υπόλοιπο σωστά.
 
