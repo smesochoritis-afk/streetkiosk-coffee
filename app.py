@@ -1,8 +1,10 @@
+
 from flask import Flask, render_template_string, send_file, redirect, url_for, request, session
 import qrcode
 import io
 import sqlite3
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import os
 
 app = Flask(__name__)
@@ -13,6 +15,7 @@ ADMIN_PIN = os.environ.get("ADMIN_PIN", "2580")
 DELETE_PASSWORD = os.environ.get("DELETE_PASSWORD", "STRATOS1976!!!")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "STRATOSADMIN2026")
 DB_NAME = "streetkiosk.db"
+GREECE_TZ = ZoneInfo("Europe/Athens")
 
 
 def get_db():
@@ -22,7 +25,7 @@ def get_db():
 
 
 def now_str():
-    return datetime.now().strftime("%d-%m-%Y %H:%M")
+    return datetime.now(GREECE_TZ).strftime("%d-%m-%Y %H:%M")
 
 
 def init_db():
@@ -88,7 +91,7 @@ body{
 }
 .card{
     background:white;
-    width:400px;
+    width:430px;
     padding:30px;
     border-radius:16px;
     box-shadow:0 5px 20px rgba(0,0,0,0.15)
@@ -338,9 +341,9 @@ body{
         <div class="stamp reward">🎁</div>
     </div>
 
-   <div class="info">
-    Έχεις {{ stamps }}/{{ target }} σφραγίδες
-</div>
+    <div class="info">
+        Έχεις {{ stamps }}/{{ target }} σφραγίδες
+    </div>
 
     <div class="qrbox">
         <p>Το QR του πελάτη</p>
@@ -563,7 +566,7 @@ button{
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
-    <a class="back" href="/customer/{{ customer_id }}">Επιστροφή</a>
+    <a class="back" href="/scanner">Επιστροφή</a>
 </div>
 </body>
 </html>
@@ -671,6 +674,7 @@ body{
 </body>
 </html>
 """
+
 SCANNER_HTML = """
 <!DOCTYPE html>
 <html lang="el">
@@ -747,7 +751,7 @@ body{
 <body>
 <div class="box">
     <h2>📷 Scanner Πελάτη</h2>
-    <p>Tablet flow: σκάναρε → άνοιγμα ταμείου → καταχώρηση → αυτόματη επιστροφή</p>
+    <p>Tablet flow: σκάναρε → άνοιγμα ταμείου → καταχώρηση → επιστροφή</p>
 
     <div class="actions">
         <button class="btn green" onclick="startScanner()">Σκάναρε</button>
@@ -891,7 +895,7 @@ th,td{
         <h2>Σύνοψη</h2>
         <p>Πελάτες: {{ total_customers }}</p>
         <p>Καφέδες που περάστηκαν: {{ total_added }}</p>
-        <p>Εξαργυρώσεις: {{ total_redeems }}</p>
+        <p>Δώρα που δόθηκαν: {{ total_redeems }}</p>
         <a class="logout" href="/admin-logout">Logout Admin</a>
     </div>
 
@@ -1029,15 +1033,35 @@ def customer_card(customer_id):
         (customer_id,)
     ).fetchone()
 
-    history = conn.execute(
-        "SELECT * FROM history WHERE customer_id = ? ORDER BY id DESC",
-        (customer_id,)
-    ).fetchall()
+    if not customer:
+        conn.close()
+        return "Ο πελάτης δεν βρέθηκε", 404
+
+    last_reward = conn.execute("""
+        SELECT id FROM history
+        WHERE customer_id = ? AND action = 'Αυτόματο δώρο'
+        ORDER BY id DESC
+        LIMIT 1
+    """, (customer_id,)).fetchone()
+
+    if last_reward:
+        history = conn.execute("""
+            SELECT * FROM history
+            WHERE customer_id = ?
+              AND id > ?
+              AND action != 'Αυτόματο δώρο'
+              AND action != 'Εγγραφή πελάτη'
+            ORDER BY id DESC
+        """, (customer_id, last_reward["id"])).fetchall()
+    else:
+        history = conn.execute("""
+            SELECT * FROM history
+            WHERE customer_id = ?
+              AND action != 'Εγγραφή πελάτη'
+            ORDER BY id DESC
+        """, (customer_id,)).fetchall()
 
     conn.close()
-
-    if not customer:
-        return "Ο πελάτης δεν βρέθηκε", 404
 
     return render_template_string(
         CUSTOMER_HTML,
@@ -1124,7 +1148,6 @@ def add_stamps(customer_id, amount):
     )
 
     action_text = f"+{amount} καφές" if amount == 1 else f"+{amount} καφέδες"
-
     conn.execute(
         "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
         (customer_id, action_text, now_str())
@@ -1139,17 +1162,7 @@ def add_stamps(customer_id, amount):
     conn.commit()
     conn.close()
 
-    if rewards_earned > 0:
-        if rewards_earned == 1:
-            message = f"Δόθηκε αυτόματα 1 δώρο 🎁 | Νέος κύκλος: {new_stamps}/{TARGET}"
-        else:
-            message = f"Δόθηκαν αυτόματα {rewards_earned} δώρα 🎁 | Νέος κύκλος: {new_stamps}/{TARGET}"
-    else:
-        message = f"Προστέθηκαν {amount} καφέδες ☕"
-
     return redirect(url_for("scanner"))
-
-
 
 
 @app.route("/delete/<int:customer_id>", methods=["GET", "POST"])
@@ -1199,6 +1212,12 @@ def admin_login():
     return render_template_string(ADMIN_LOGIN_HTML, error="")
 
 
+@app.route("/admin-logout")
+def admin_logout():
+    session.pop("admin_auth", None)
+    return redirect(url_for("admin_login"))
+
+
 @app.route("/admin")
 def admin():
     if not admin_logged_in():
@@ -1218,7 +1237,7 @@ def admin():
         if action.startswith("+"):
             try:
                 total_added += int(action[1])
-            except:
+            except Exception:
                 pass
 
         if action == "Αυτόματο δώρο":
@@ -1231,6 +1250,7 @@ def admin():
         total_added=total_added,
         total_redeems=total_redeems
     )
+
 
 @app.route("/qr/<int:customer_id>")
 def qr(customer_id):
@@ -1256,3 +1276,14 @@ def qr(customer_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+```
+
+Και το `requirements.txt` να είναι:
+
+```txt
+flask
+gunicorn
+qrcode
+pillow
+```
+
