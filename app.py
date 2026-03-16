@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template_string, send_file, redirect, url_for, request, session
 import qrcode
 import io
