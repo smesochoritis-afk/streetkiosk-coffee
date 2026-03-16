@@ -246,6 +246,7 @@ CUSTOMER_HTML = """
 <html lang="el">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="refresh" content="20">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Κάρτα Πελάτη</title>
 <style>
@@ -337,13 +338,9 @@ body{
         <div class="stamp reward">🎁</div>
     </div>
 
-    <div class="info">
-        {% if stamps >= target %}
-            Έχεις δωρεάν καφέ! 🎉
-        {% else %}
-            Έχεις {{ stamps }}/{{ target }} σφραγίδες
-        {% endif %}
-    </div>
+   <div class="info">
+    Έχεις {{ stamps }}/{{ target }} σφραγίδες
+</div>
 
     <div class="qrbox">
         <p>Το QR του πελάτη</p>
@@ -595,24 +592,23 @@ body{
     padding:30px;
     border-radius:16px;
     box-shadow:0 5px 20px rgba(0,0,0,0.15);
-    width:360px;
+    width:380px;
     text-align:center
 }
-.title{font-size:26px;font-weight:bold}
-.name{margin-top:8px;color:#555;font-weight:bold}
-.info{margin:16px 0;font-weight:bold}
+.title{font-size:28px;font-weight:bold}
+.name{margin-top:8px;color:#555;font-weight:bold;font-size:24px}
+.info{margin:16px 0;font-weight:bold;font-size:22px}
 .row{display:flex;gap:10px;margin-top:14px}
 .row form{flex:1;margin:0}
 .btn{
     width:100%;
     border:none;
     border-radius:12px;
-    padding:14px 10px;
-    font-size:18px;
+    padding:16px 10px;
+    font-size:20px;
     cursor:pointer
 }
 .dark{background:#222;color:white}
-.gold{background:gold;color:#222}
 .red{background:#b00020;color:white}
 .back{
     display:inline-block;
@@ -626,6 +622,11 @@ body{
     color:#b00020;
     text-decoration:none;
     font-weight:bold
+}
+.note{
+    margin-top:14px;
+    color:#666;
+    font-size:13px
 }
 </style>
 </head>
@@ -648,8 +649,11 @@ body{
     </div>
 
     <div class="row">
-        <form method="post" action="/redeem/{{ customer_id }}">
-            <button class="btn gold" type="submit">Εξαργύρωση Δώρου</button>
+        <form method="post" action="/add/{{ customer_id }}/4">
+            <button class="btn dark" type="submit">+4</button>
+        </form>
+        <form method="post" action="/add/{{ customer_id }}/5">
+            <button class="btn dark" type="submit">+5</button>
         </form>
     </div>
 
@@ -659,50 +663,14 @@ body{
         </form>
     </div>
 
-    <a class="back" href="/customer/{{ customer_id }}">Επιστροφή στην κάρτα</a><br>
+    <div class="note">Το δώρο δίνεται αυτόματα στο 5ο.</div>
+
+    <a class="back" href="/scanner">Πίσω στο scanner</a><br>
     <a class="logout" href="/cashier-logout">Logout Ταμείου</a>
 </div>
 </body>
 </html>
 """
-
-RESULT_HTML = """
-<!DOCTYPE html>
-<html lang="el">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="1.5;url=/customer/{{ customer_id }}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Αποτέλεσμα</title>
-<style>
-body{
-    font-family:Arial,sans-serif;
-    background:#f4f4f4;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:100vh;
-    margin:0
-}
-.box{
-    background:white;
-    padding:30px;
-    border-radius:16px;
-    box-shadow:0 5px 20px rgba(0,0,0,0.15);
-    width:320px;
-    text-align:center
-}
-</style>
-</head>
-<body>
-<div class="box">
-    <h2>{{ message }}</h2>
-    <p>{{ stamps }}/{{ target }} σφραγίδες</p>
-</div>
-</body>
-</html>
-"""
-
 SCANNER_HTML = """
 <!DOCTYPE html>
 <html lang="el">
@@ -720,57 +688,166 @@ body{
     text-align:center
 }
 .box{
-    max-width:500px;
+    max-width:620px;
     margin:0 auto;
     background:white;
-    padding:20px;
+    padding:24px;
     border-radius:16px;
     box-shadow:0 5px 20px rgba(0,0,0,0.15)
 }
-#reader{width:100%;margin-top:20px}
+#reader{
+    width:100%;
+    margin-top:20px;
+    min-height:320px
+}
+.actions{
+    display:flex;
+    gap:12px;
+    margin-top:16px;
+    justify-content:center;
+    flex-wrap:wrap
+}
 .btn{
     display:inline-block;
-    margin-top:14px;
-    padding:10px 14px;
+    padding:14px 18px;
     background:#222;
     color:white;
     text-decoration:none;
-    border-radius:10px
+    border-radius:12px;
+    border:none;
+    font-size:18px;
+    cursor:pointer;
+    min-width:180px
+}
+.btn.secondary{
+    background:#666
+}
+.btn.green{
+    background:#0a7d32
 }
 .logout{
     display:inline-block;
-    margin-top:10px;
+    margin-top:14px;
     color:#b00020;
     text-decoration:none;
     font-weight:bold
+}
+.small{
+    color:#666;
+    font-size:14px;
+    margin-top:10px
+}
+.status{
+    margin-top:14px;
+    font-weight:bold;
+    color:#333
 }
 </style>
 </head>
 <body>
 <div class="box">
     <h2>📷 Scanner Πελάτη</h2>
-    <p>Σκάναρε το QR του πελάτη για να ανοίξει το ταμείο του</p>
+    <p>Tablet flow: σκάναρε → άνοιγμα ταμείου → καταχώρηση → αυτόματη επιστροφή</p>
+
+    <div class="actions">
+        <button class="btn green" onclick="startScanner()">Σκάναρε</button>
+        <a class="btn secondary" href="/">Νέα εγγραφή</a>
+    </div>
+
     <div id="reader"></div>
-    <a class="btn" href="/">Πίσω</a><br>
+    <div class="status" id="status">Το scanner είναι έτοιμο.</div>
+    <div class="small">Θα προσπαθήσει πρώτα να ανοίξει την πίσω κάμερα.</div>
+
     <a class="logout" href="/cashier-logout">Logout Ταμείου</a>
 </div>
 
 <script>
-function onScanSuccess(decodedText) {
+let html5QrCode = new Html5Qrcode("reader");
+let scannerStarted = false;
+let handlingScan = false;
+
+async function startScanner() {
+    if (scannerStarted) {
+        document.getElementById("status").innerText = "Το scanner δουλεύει ήδη.";
+        return;
+    }
+
+    document.getElementById("status").innerText = "Εκκίνηση κάμερας...";
+
+    const config = {
+        fps: 10,
+        qrbox: { width: 260, height: 260 },
+        aspectRatio: 1.333333
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: { exact: "environment" } },
+            config,
+            onScanSuccess
+        );
+        scannerStarted = true;
+        document.getElementById("status").innerText = "Σκάναρε το QR του πελάτη.";
+        return;
+    } catch (e) {
+    }
+
+    try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+            document.getElementById("status").innerText = "Δεν βρέθηκε κάμερα.";
+            return;
+        }
+
+        let selectedCamera = cameras[0].id;
+
+        for (const cam of cameras) {
+            const label = (cam.label || "").toLowerCase();
+            if (
+                label.includes("back") ||
+                label.includes("rear") ||
+                label.includes("environment")
+            ) {
+                selectedCamera = cam.id;
+                break;
+            }
+        }
+
+        await html5QrCode.start(
+            selectedCamera,
+            config,
+            onScanSuccess
+        );
+        scannerStarted = true;
+        document.getElementById("status").innerText = "Σκάναρε το QR του πελάτη.";
+    } catch (err) {
+        document.getElementById("status").innerText = "Δεν άνοιξε η κάμερα.";
+    }
+}
+
+async function onScanSuccess(decodedText) {
+    if (handlingScan) return;
+    handlingScan = true;
+
+    document.getElementById("status").innerText = "Άνοιγμα πελάτη...";
+
+    try {
+        if (scannerStarted) {
+            await html5QrCode.stop();
+            scannerStarted = false;
+        }
+    } catch (e) {
+    }
+
     if (decodedText.includes("/customer/")) {
         const parts = decodedText.split("/customer/");
         const customerId = parts[1].split(/[?#]/)[0];
         window.location.href = "/cashier/" + customerId;
+        return;
     }
+
+    window.location.href = decodedText;
 }
-
-const html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader",
-    { fps: 10, qrbox: 220 },
-    false
-);
-
-html5QrcodeScanner.render(onScanSuccess);
 </script>
 </body>
 </html>
@@ -1022,7 +1099,7 @@ def add_stamps(customer_id, amount):
     if not cashier_logged_in():
         return redirect(url_for("cashier_login"))
 
-    if amount not in [1, 2, 3]:
+    if amount not in [1, 2, 3, 4, 5]:
         return "Μη έγκυρος αριθμός καφέδων", 400
 
     conn = get_db()
@@ -1035,9 +1112,11 @@ def add_stamps(customer_id, amount):
         conn.close()
         return "Ο πελάτης δεν βρέθηκε", 404
 
-    new_stamps = customer["stamps"] + amount
-    if new_stamps > TARGET:
-        new_stamps = TARGET
+    current_stamps = int(customer["stamps"])
+    total = current_stamps + amount
+
+    rewards_earned = total // TARGET
+    new_stamps = total % TARGET
 
     conn.execute(
         "UPDATE customers SET stamps = ? WHERE id = ?",
@@ -1051,10 +1130,22 @@ def add_stamps(customer_id, amount):
         (customer_id, action_text, now_str())
     )
 
+    for _ in range(rewards_earned):
+        conn.execute(
+            "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
+            (customer_id, "Αυτόματο δώρο", now_str())
+        )
+
     conn.commit()
     conn.close()
 
-    message = "Έφτασε δώρο 🎁" if new_stamps >= TARGET else f"Προστέθηκαν {amount} καφέδες ☕"
+    if rewards_earned > 0:
+        if rewards_earned == 1:
+            message = f"Δόθηκε αυτόματα 1 δώρο 🎁 | Νέος κύκλος: {new_stamps}/{TARGET}"
+        else:
+            message = f"Δόθηκαν αυτόματα {rewards_earned} δώρα 🎁 | Νέος κύκλος: {new_stamps}/{TARGET}"
+    else:
+        message = f"Προστέθηκαν {amount} καφέδες ☕"
 
     return render_template_string(
         RESULT_HTML,
@@ -1065,51 +1156,6 @@ def add_stamps(customer_id, amount):
     )
 
 
-@app.route("/redeem/<int:customer_id>", methods=["POST"])
-def redeem(customer_id):
-    if not cashier_logged_in():
-        return redirect(url_for("cashier_login"))
-
-    conn = get_db()
-    customer = conn.execute(
-        "SELECT * FROM customers WHERE id = ?",
-        (customer_id,)
-    ).fetchone()
-
-    if not customer:
-        conn.close()
-        return "Ο πελάτης δεν βρέθηκε", 404
-
-    if customer["stamps"] < TARGET:
-        conn.close()
-        return render_template_string(
-            RESULT_HTML,
-            message="Δεν υπάρχει ακόμα δώρο",
-            stamps=customer["stamps"],
-            target=TARGET,
-            customer_id=customer_id
-        )
-
-    conn.execute(
-        "UPDATE customers SET stamps = 0 WHERE id = ?",
-        (customer_id,)
-    )
-
-    conn.execute(
-        "INSERT INTO history (customer_id, action, created_at) VALUES (?, ?, ?)",
-        (customer_id, "Εξαργύρωση δώρου", now_str())
-    )
-
-    conn.commit()
-    conn.close()
-
-    return render_template_string(
-        RESULT_HTML,
-        message="Το δώρο εξαργυρώθηκε ✅",
-        stamps=0,
-        target=TARGET,
-        customer_id=customer_id
-    )
 
 
 @app.route("/delete/<int:customer_id>", methods=["GET", "POST"])
@@ -1159,12 +1205,6 @@ def admin_login():
     return render_template_string(ADMIN_LOGIN_HTML, error="")
 
 
-@app.route("/admin-logout")
-def admin_logout():
-    session.pop("admin_auth", None)
-    return redirect(url_for("admin_login"))
-
-
 @app.route("/admin")
 def admin():
     if not admin_logged_in():
@@ -1184,10 +1224,10 @@ def admin():
         if action.startswith("+"):
             try:
                 total_added += int(action[1])
-            except Exception:
+            except:
                 pass
 
-        if action == "Εξαργύρωση δώρου":
+        if action == "Αυτόματο δώρο":
             total_redeems += 1
 
     return render_template_string(
@@ -1197,7 +1237,6 @@ def admin():
         total_added=total_added,
         total_redeems=total_redeems
     )
-
 
 @app.route("/qr/<int:customer_id>")
 def qr(customer_id):
