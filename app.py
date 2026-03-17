@@ -650,7 +650,12 @@ body{
         <p>Το προσωπικό μου QR</p>
         <img src="/qr/{{ customer['card_token'] }}" width="180">
     </div>
-html <button class="btn" id="installButton">Αποθήκευση στην αρχική οθόνη</button> <div class="install-box" id="installInfo"> Πάτησε το κουμπί για να αποθηκεύσεις την κάρτα σου στην αρχική οθόνη. </div> ``` --- ### 2) Μετά, στο κάτω μέρος του `CUSTOMER_HTML`, βρες όλο το `<script>...</script>` και **αντικατάστησέ το όλο** με αυτό: ```html <script> let deferredPrompt = null; const installButton = document.getElementById("installButton"); const installInfo = document.getElementById("installInfo"); window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredPrompt = e; }); installButton.addEventListener("click", async () => { const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent); const isInStandaloneMode = ("standalone" in window.navigator) && window.navigator.standalone; if (isIos && !isInStandaloneMode) { alert("Σε iPhone πάτησε Κοινοποίηση και μετά «Προσθήκη στην αρχική οθόνη»."); return; } if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installInfo.innerText =
+
+    <button class="btn" id="installButton">Αποθήκευση στην αρχική οθόνη</button>
+
+    <div class="install-box" id="installInfo">
+        Πάτησε το κουμπί για να αποθηκεύσεις την κάρτα σου στην αρχική οθόνη.
+    </div>
 
     <a class="btn secondary" href="/card/{{ customer['card_token'] }}">Ανανέωση κάρτας</a>
 
@@ -669,34 +674,31 @@ html <button class="btn" id="installButton">Αποθήκευση στην αρχ
 <script>
 let deferredPrompt = null;
 const installButton = document.getElementById("installButton");
-const iosButton = document.getElementById("iosButton");
 const installInfo = document.getElementById("installInfo");
 
 window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installButton.style.display = "inline-block";
-    installInfo.innerText = "Πάτησε το κουμπί για αποθήκευση στην αρχική οθόνη.";
 });
 
 installButton.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    installButton.style.display = "none";
-});
+    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const isInStandaloneMode = ("standalone" in window.navigator) && window.navigator.standalone;
 
-const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-const isInStandaloneMode = ("standalone" in window.navigator) && window.navigator.standalone;
+    if (isIos && !isInStandaloneMode) {
+        alert("Σε iPhone πάτησε Κοινοποίηση και μετά «Προσθήκη στην αρχική οθόνη».");
+        return;
+    }
 
-if (isIos && !isInStandaloneMode) {
-    iosButton.style.display = "inline-block";
-    installInfo.innerText = "Σε iPhone: πάτησε το κουμπί και ακολούθησε τις οδηγίες.";
-}
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installInfo.innerText = "Η κάρτα προστέθηκε ή εμφανίστηκε το παράθυρο εγκατάστασης.";
+        return;
+    }
 
-iosButton.addEventListener("click", () => {
-    alert("Σε iPhone πάτησε Κοινοποίηση και μετά «Προσθήκη στην αρχική οθόνη».");
+    alert("Αν δεν εμφανιστεί αυτόματα επιλογή, χρησιμοποίησε το μενού του browser και επίλεξε «Προσθήκη στην αρχική οθόνη».");
 });
 </script>
 </body>
