@@ -650,13 +650,7 @@ body{
         <p>Το προσωπικό μου QR</p>
         <img src="/qr/{{ customer['card_token'] }}" width="180">
     </div>
-
-    <button class="btn" id="installButton" style="display:none;">Αποθήκευση στην αρχική οθόνη</button>
-    <button class="btn secondary" id="iosButton" style="display:none;">Οδηγίες για αρχική οθόνη</button>
-
-    <div class="install-box" id="installInfo">
-        Η κάρτα ανανεώνεται αυτόματα κάθε 20 δευτερόλεπτα.
-    </div>
+html <button class="btn" id="installButton">Αποθήκευση στην αρχική οθόνη</button> <div class="install-box" id="installInfo"> Πάτησε το κουμπί για να αποθηκεύσεις την κάρτα σου στην αρχική οθόνη. </div> ``` --- ### 2) Μετά, στο κάτω μέρος του `CUSTOMER_HTML`, βρες όλο το `<script>...</script>` και **αντικατάστησέ το όλο** με αυτό: ```html <script> let deferredPrompt = null; const installButton = document.getElementById("installButton"); const installInfo = document.getElementById("installInfo"); window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredPrompt = e; }); installButton.addEventListener("click", async () => { const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent); const isInStandaloneMode = ("standalone" in window.navigator) && window.navigator.standalone; if (isIos && !isInStandaloneMode) { alert("Σε iPhone πάτησε Κοινοποίηση και μετά «Προσθήκη στην αρχική οθόνη»."); return; } if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installInfo.innerText =
 
     <a class="btn secondary" href="/card/{{ customer['card_token'] }}">Ανανέωση κάρτας</a>
 
